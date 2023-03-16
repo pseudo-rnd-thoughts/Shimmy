@@ -1,43 +1,44 @@
 """Utility functions for the compatibility wrappers."""
 from __future__ import annotations
 
-import copy
 from collections import OrderedDict
 from typing import Any
 
-import dm_env
+import dm_env.specs
 import numpy as np
-from dm_env.specs import Array, BoundedArray, DiscreteArray
+import tree
 from gymnasium import spaces
 
 
-def dm_spec2gym_space(spec) -> spaces.Space[Any]:
-    """Converts a dm_env spec to a gymnasium space."""
+def dm_spec2gym_space(spec: tree.Structure[dm_env.specs.Array]) -> spaces.Space[Any]:
+    """Converts a dm_env nested structure of specs to a Gymnasium Space.
+
+    BoundedArray is converted to Box Gymnasium spaces. DiscreteArray is converted to
+    Discrete Gymnasium spaces. Using Tuple and Dict spaces recursively as needed.
+
+    Args:
+      spec: The nested structure of specs
+
+    Returns:
+      The Gymnasium space corresponding to the given spec.
+    """
     if isinstance(spec, (OrderedDict, dict)):
         return spaces.Dict(
-            {key: dm_spec2gym_space(value) for key, value in copy.copy(spec).items()}
+            {key: dm_spec2gym_space(sub_spec) for key, sub_spec in spec.items()}
         )
-    # not possible to use isinstance due to inheritance
-    elif type(spec) is BoundedArray:
-        low = np.broadcast_to(spec.minimum, spec.shape)
-        high = np.broadcast_to(spec.maximum, spec.shape)
-        return spaces.Box(low=low, high=high, shape=spec.shape, dtype=spec.dtype)
-    elif type(spec) is Array:
-        if np.issubdtype(spec.dtype, np.integer):
-            low = np.iinfo(spec.dtype).min
-            high = np.iinfo(spec.dtype).max
-        elif np.issubdtype(spec.dtype, np.inexact):
-            low = float("-inf")
-            high = float("inf")
-        elif spec.dtype == "bool":
-            low = int(0)
-            high = int(1)
-        else:
-            raise ValueError(f"Unknown dtype {spec.dtype} for spec {spec}.")
-
-        return spaces.Box(low=low, high=high, shape=spec.shape, dtype=spec.dtype)
-    elif type(spec) is DiscreteArray:
-        return spaces.Discrete(spec.num_values)
+    elif isinstance(spec, (list, tuple)):
+        return spaces.Tuple([dm_spec2gym_space(sub_spec) for sub_spec in spec])
+    # Due to inheritance we must use the Order - DiscreteArray, BoundedArray, StringArray, Array
+    elif isinstance(spec, dm_env.specs.DiscreteArray):
+        return spaces.Discrete(spec.maximum)
+    elif isinstance(spec, dm_env.specs.BoundedArray):
+        return spaces.Box(
+            low=spec.minimum, high=spec.maximum, shape=spec.shape, dtype=spec.dtype
+        )
+    elif isinstance(spec, dm_env.specs.StringArray):
+        raise TypeError(spec)
+    elif isinstance(spec, dm_env.specs.Array):
+        raise TypeError(spec)
     else:
         raise NotImplementedError(
             f"Cannot convert dm_spec to gymnasium space, unknown spec: {spec}, please report."
@@ -56,7 +57,7 @@ def dm_obs2gym_obs(obs) -> np.ndarray | dict[str, Any]:
         The Gymnasium-compatible observation.
     """
     if isinstance(obs, (OrderedDict, dict)):
-        return {key: dm_obs2gym_obs(value) for key, value in copy.copy(obs).items()}
+        return {key: dm_obs2gym_obs(value) for key, value in obs.items()}
     else:
         return np.asarray(obs)
 

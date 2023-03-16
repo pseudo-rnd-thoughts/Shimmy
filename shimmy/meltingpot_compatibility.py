@@ -4,22 +4,44 @@ Taken from
 https://github.com/deepmind/meltingpot/blob/main/examples/pettingzoo/utils.py
 and modified to modern pettingzoo API
 """
-# pyright: reportOptionalSubscript=false
-
 from __future__ import annotations
 
 import functools
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
+import dm_env
 import gymnasium
 import meltingpot.python
 import numpy as np
 import pygame
+from gymnasium import spaces
 from gymnasium.utils.ezpickle import EzPickle
-from ml_collections import config_dict
+from ml_collections.config_dict import ConfigDict
 from pettingzoo.utils.env import ActionDict, AgentID, ObsDict, ParallelEnv
 
-import shimmy.utils.meltingpot as utils
+from shimmy.utils.dm_env import dm_spec2gym_space
+
+PLAYER_STR_FORMAT = "player_{index}"
+MELTINGPOT_WORLD_PREFIX = "WORLD."
+
+
+def meltingpot_timestep_to_obs(timestep: dm_env.TimeStep) -> ObsDict:
+    """Extracts Gymnasium-compatible observations from a melting pot timestep.
+
+    Args:
+        timestep: The dm_env timestep
+
+    Returns:
+        observation, reward, terminated, truncated, info.
+    """
+    obs = {}
+    for index, agent_obs in enumerate(timestep.observation):
+        obs[PLAYER_STR_FORMAT.format(index=index)] = {
+            key: value
+            for key, value in agent_obs.items()
+            if MELTINGPOT_WORLD_PREFIX not in key
+        }
+    return obs
 
 
 class MeltingPotCompatibilityV0(ParallelEnv, EzPickle):
@@ -64,14 +86,14 @@ class MeltingPotCompatibilityV0(ParallelEnv, EzPickle):
         self.env_config = {"substrate": self.substrate_name, "roles": self.player_roles}
 
         # Build substrate from pickle
-        self.env_config = config_dict.ConfigDict(self.env_config)
+        self.env_config = ConfigDict(self.env_config)
         self._env = meltingpot.python.substrate.build(
             self.env_config["substrate"], roles=self.env_config["roles"]
         )
 
         # Set up PettingZoo variables
         self.render_mode = render_mode
-        self.state_space = utils.dm_spec2gym_space(
+        self.state_space = dm_spec2gym_space(
             self._env.observation_spec()[0]["WORLD.RGB"]
         )
         self._num_players = len(self._env.observation_spec())
@@ -90,6 +112,7 @@ class MeltingPotCompatibilityV0(ParallelEnv, EzPickle):
             self.clock = pygame.time.Clock()
             pygame.display.set_caption("Melting Pot")
             shape = self.state_space.shape
+            assert shape is not None
             self.game_display = pygame.display.set_mode(
                 (
                     int(shape[1] * self.display_scale),
@@ -109,10 +132,13 @@ class MeltingPotCompatibilityV0(ParallelEnv, EzPickle):
         Returns:
             observation_space: spaces.Space
         """
-        observation_space = utils.remove_world_observations_from_space(
-            utils.dm_spec2gym_space(self._env.observation_spec()[0])  # type: ignore
+        return spaces.Dict(
+            {
+                key: dm_spec2gym_space(space)
+                for key, space in self._env.observation_spec()[0].items()
+                if key != MELTINGPOT_WORLD_PREFIX
+            }
         )
-        return observation_space
 
     @functools.lru_cache(maxsize=None)
     def action_space(self, agent: AgentID) -> gymnasium.spaces.Space:
@@ -126,7 +152,7 @@ class MeltingPotCompatibilityV0(ParallelEnv, EzPickle):
         Returns:
             action_space: spaces.Space
         """
-        action_space = utils.dm_spec2gym_space(self._env.action_spec()[0])
+        action_space = dm_spec2gym_space(self._env.action_spec()[0])
         return action_space
 
     def state(self) -> np.ndarray:
@@ -142,8 +168,9 @@ class MeltingPotCompatibilityV0(ParallelEnv, EzPickle):
     def reset(
         self,
         seed: int | None = None,
+        return_info: bool = False,
         options: dict | None = None,
-    ) -> ObsDict:
+    ) -> ObsDict | tuple[ObsDict, dict]:
         """reset.
 
         Resets the environment.
@@ -159,9 +186,12 @@ class MeltingPotCompatibilityV0(ParallelEnv, EzPickle):
         self.agents = self.possible_agents[:]
         self.num_cycles = 0
 
-        observations = utils.timestep_to_observations(timestep)
+        observations = meltingpot_timestep_to_obs(timestep)
 
-        return observations
+        if return_info:
+            return observations, {}
+        else:
+            return observations
 
     def step(
         self, actions: ActionDict
@@ -192,7 +222,7 @@ class MeltingPotCompatibilityV0(ParallelEnv, EzPickle):
         if termination or truncation:
             self.agents = []
 
-        observations = utils.timestep_to_observations(timestep)
+        observations = meltingpot_timestep_to_obs(timestep)
         return observations, rewards, terminations, truncations, infos
 
     def close(self):

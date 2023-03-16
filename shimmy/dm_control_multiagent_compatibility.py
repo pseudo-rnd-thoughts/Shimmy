@@ -134,7 +134,7 @@ class DmControlMultiAgentCompatibilityV0(ParallelEnv):
         if hasattr(self, "viewer"):
             self.viewer.close()
 
-    def reset(self, seed=None, options=None):
+    def reset(self, seed=None, return_info=False, options=None):
         """Resets the dm-control environment."""
         self.agents = self.possible_agents[:]
         self.num_moves = 0
@@ -143,7 +143,10 @@ class DmControlMultiAgentCompatibilityV0(ParallelEnv):
 
         observations, _, _, _, infos = _unravel_ma_timestep(timestep, self.agents)
 
-        return observations, infos
+        if not return_info:
+            return observations
+        else:
+            return observations, infos
 
     def step(self, actions):
         """Steps through all agents with the actions."""
