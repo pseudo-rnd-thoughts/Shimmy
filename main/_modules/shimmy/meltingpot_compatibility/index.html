@@ -290,6 +290,7 @@
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">repeat</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
 
 <span class="kn">import</span> <span class="nn">dm_env</span>
@@ -302,7 +303,8 @@
 <span class="kn">import</span> <span class="nn">shimmy.utils.meltingpot</span> <span class="k">as</span> <span class="nn">utils</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="kn">import</span> <span class="nn">meltingpot.python</span>
+    <span class="kn">import</span> <span class="nn">meltingpot</span>
+    <span class="kn">from</span> <span class="nn">meltingpot.utils.substrates</span> <span class="kn">import</span> <span class="n">substrate</span>
 
 
 <div class="viewcode-block" id="MeltingPotCompatibilityV0">
@@ -330,7 +332,7 @@
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">env</span><span class="p">:</span> <span class="n">meltingpot</span><span class="o">.</span><span class="n">python</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">substrates</span><span class="o">.</span><span class="n">substrate</span><span class="o">.</span><span class="n">Substrate</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">env</span><span class="p">:</span> <span class="n">substrate</span><span class="o">.</span><span class="n">Substrate</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">substrate_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">max_cycles</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">MAX_CYCLES</span><span class="p">,</span>
         <span class="n">render_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -338,7 +340,7 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Wrapper that converts a Melting Pot environment into a PettingZoo environment.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            env (Optional[meltingpot.python.utils.substrates.substrate.Substrate]): existing Melting Pot environment to wrap</span>
+<span class="sd">            env (Optional[substrate.Substrate]): existing Melting Pot environment to wrap</span>
 <span class="sd">            substrate_name (Optional[str]): name of Melting Pot substrate to load (instead of existing environment)</span>
 <span class="sd">            max_cycles (Optional[int]): maximum number of cycles before truncation</span>
 <span class="sd">            render_mode (Optional[str]): rendering mode</span>
@@ -453,7 +455,7 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ObsDict</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ObsDict</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="n">AgentID</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;reset.</span>
 
 <span class="sd">        Resets the environment.</span>
@@ -471,10 +473,16 @@
 
         <span class="n">observations</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">timestep_to_observations</span><span class="p">(</span><span class="n">timestep</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">observations</span><span class="p">,</span> <span class="p">{</span>
-            <span class="s2">&quot;step-type&quot;</span><span class="p">:</span> <span class="n">timestep</span><span class="o">.</span><span class="n">step_type</span><span class="p">,</span>
-            <span class="s2">&quot;discount&quot;</span><span class="p">:</span> <span class="n">timestep</span><span class="o">.</span><span class="n">discount</span><span class="p">,</span>
-        <span class="p">}</span></div>
+        <span class="c1"># duplicate infos across agents</span>
+        <span class="n">infos</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">agent</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;timestep.discount&quot;</span><span class="p">:</span> <span class="n">timestep</span><span class="o">.</span><span class="n">discount</span><span class="p">,</span>
+                <span class="s2">&quot;timestep.step_type&quot;</span><span class="p">:</span> <span class="n">timestep</span><span class="o">.</span><span class="n">step_type</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">for</span> <span class="n">agent</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">observations</span><span class="p">,</span> <span class="n">infos</span></div>
 
 
 <div class="viewcode-block" id="MeltingPotCompatibilityV0.step">
@@ -676,7 +684,7 @@
         })()
       </script>
 
-    <script src="../../../_static/documentation_options.js?v=e86ceb7b"></script>
+    <script src="../../../_static/documentation_options.js?v=0559ecf3"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=7660844c"></script>

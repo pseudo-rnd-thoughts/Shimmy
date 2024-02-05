@@ -302,16 +302,14 @@
 <span class="sd">        substrate_name: str</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        env: meltingpot.python.utils.substrates.substrate.Substrate</span>
+<span class="sd">        env: meltingpot.utils.substrates.substrate.Substrate</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span> <span class="nn">meltingpot.python</span>
+    <span class="kn">import</span> <span class="nn">meltingpot</span>
     <span class="kn">from</span> <span class="nn">ml_collections</span> <span class="kn">import</span> <span class="n">config_dict</span>
 
     <span class="c1"># Create env config</span>
     <span class="n">substrate_name</span> <span class="o">=</span> <span class="n">substrate_name</span>
-    <span class="n">player_roles</span> <span class="o">=</span> <span class="n">meltingpot</span><span class="o">.</span><span class="n">python</span><span class="o">.</span><span class="n">substrate</span><span class="o">.</span><span class="n">get_config</span><span class="p">(</span>
-        <span class="n">substrate_name</span>
-    <span class="p">)</span><span class="o">.</span><span class="n">default_player_roles</span>
+    <span class="n">player_roles</span> <span class="o">=</span> <span class="n">meltingpot</span><span class="o">.</span><span class="n">substrate</span><span class="o">.</span><span class="n">get_config</span><span class="p">(</span><span class="n">substrate_name</span><span class="p">)</span><span class="o">.</span><span class="n">default_player_roles</span>
     <span class="n">env_config</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;substrate&quot;</span><span class="p">:</span> <span class="n">substrate_name</span><span class="p">,</span>
         <span class="s2">&quot;roles&quot;</span><span class="p">:</span> <span class="n">player_roles</span><span class="p">,</span>
@@ -319,9 +317,7 @@
 
     <span class="c1"># Build substrate from pickle</span>
     <span class="n">env_config</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">ConfigDict</span><span class="p">(</span><span class="n">env_config</span><span class="p">)</span>
-    <span class="n">env</span> <span class="o">=</span> <span class="n">meltingpot</span><span class="o">.</span><span class="n">python</span><span class="o">.</span><span class="n">substrate</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
-        <span class="n">env_config</span><span class="p">[</span><span class="s2">&quot;substrate&quot;</span><span class="p">],</span> <span class="n">roles</span><span class="o">=</span><span class="n">env_config</span><span class="p">[</span><span class="s2">&quot;roles&quot;</span><span class="p">]</span>
-    <span class="p">)</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">meltingpot</span><span class="o">.</span><span class="n">substrate</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">env_config</span><span class="p">[</span><span class="s2">&quot;substrate&quot;</span><span class="p">],</span> <span class="n">roles</span><span class="o">=</span><span class="n">env_config</span><span class="p">[</span><span class="s2">&quot;roles&quot;</span><span class="p">])</span>
     <span class="k">return</span> <span class="n">env</span></div>
 
 
@@ -480,7 +476,7 @@
         })()
       </script>
 
-    <script src="../../../../_static/documentation_options.js?v=e86ceb7b"></script>
+    <script src="../../../../_static/documentation_options.js?v=0559ecf3"></script>
     <script src="../../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/scripts/furo.js?v=7660844c"></script>
